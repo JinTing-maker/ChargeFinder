@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChargeFinder - 快充设备精选导航</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="chargeFinder">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+
+        <!-- 标题 -->
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">
+                ⚡ ChargeFinder
+            </h1>
+            <p class="text-gray-500">快充设备精选导航</p>
+        </header>
+
+        <!-- 智能搜索 -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 mb-8">
+            <div class="relative">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                    type="text"
+                    x-model="searchQuery"
+                    placeholder="输入品牌、型号、功率… 如：倍思 65W PD3.1"
+                    class="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
+                >
+                <button
+                    x-show="searchQuery"
+                    @click="searchQuery = ''"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition"
+                >✕</button>
+            </div>
+            <!-- 识别标签 -->
+            <div x-show="searchTags.length > 0" class="flex flex-wrap gap-2 mt-3">
+                <template x-for="tag in searchTags" :key="tag.label">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
+                        <span x-text="tag.label"></span>
+                        <button @click="removeSearchTag(tag)" class="hover:text-orange-900">&times;</button>
+                    </span>
+                </template>
+            </div>
+        </div>
+
+        <!-- 筛选器 -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 mb-8 space-y-6">
+
+            <!-- 类别切换 -->
+            <div>
+                <span class="text-sm font-medium text-gray-500 mr-3">类别</span>
+                <div class="inline-flex flex-wrap gap-2">
+                    <button
+                        @click="filters.category = ''"
+                        :class="filters.category === '' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >全部</button>
+                    <button
+                        @click="filters.category = '充电器'"
+                        :class="filters.category === '充电器' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >充电器</button>
+                    <button
+                        @click="filters.category = '充电宝'"
+                        :class="filters.category === '充电宝' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >充电宝</button>
+                </div>
+            </div>
+
+            <!-- 功率阶梯 -->
+            <div>
+                <span class="text-sm font-medium text-gray-500 mr-3">功率</span>
+                <div class="inline-flex flex-wrap gap-2">
+                    <button
+                        @click="filters.power = ''"
+                        :class="filters.power === '' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >全部</button>
+                    {% for pr in power_ranges %}
+                    <button
+                        @click="filters.power = '{{ pr.min_value }}-{{ pr.max_value }}'"
+                        :class="filters.power === '{{ pr.min_value }}-{{ pr.max_value }}' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition"
+                    >{{ pr.label }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 协议多选 -->
+            <div>
+                <span class="text-sm font-medium text-gray-500 mr-3">协议</span>
+                <div class="inline-flex flex-wrap gap-2">
+                    {% for proto in all_protocols %}
+                    <label class="cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            value="{{ proto }}"
+                            @change="toggleProtocol('{{ proto }}', $event.target.checked)"
+                            class="hidden peer"
+                        >
+                        <span class="px-3 py-1.5 rounded-lg text-xs font-medium border transition
+                            bg-gray-100 text-gray-500 border-gray-200
+                            peer-checked:bg-blue-50 peer-checked:text-blue-600 peer-checked:border-blue-300">
+                            {{ proto }}
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% if not all_protocols %}
+                <span class="text-sm text-gray-400">暂无产品数据</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 结果计数 -->
+        <div class="mb-6">
+            <p class="text-sm text-gray-500">
+                找到 <span class="font-semibold text-gray-900" x-text="filteredProducts.length"></span> 款
+            </p>
+        </div>
+
+        <!-- 产品网格 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <template x-for="product in filteredProducts" :key="product.id">
+                <a
+                    :href="'/product/' + product.id + '/'"
+                    class="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-shadow block"
+                >
+                    <!-- 产品图片 -->
+                    <div class="aspect-square bg-gray-100 overflow-hidden">
+                        <img
+                            :src="product.image_url"
+                            :alt="product.brand + ' ' + product.name"
+                            class="w-full h-full object-cover"
+                            x-show="product.image_url"
+                        >
+                        <div
+                            x-show="!product.image_url"
+                            class="w-full h-full flex items-center justify-center text-gray-300"
+                        >
+                            <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- 卡片信息 -->
+                    <div class="p-4 space-y-2">
+                        <!-- 品牌 + 型号 -->
+                        <h3 class="font-semibold text-gray-900 text-sm leading-tight">
+                            <span x-text="product.brand"></span>
+                            <span class="ml-1" x-text="product.name"></span>
+                        </h3>
+
+                        <!-- 总功率（大号高亮） + 价格 -->
+                        <div class="flex items-end justify-between">
+                            <p class="text-3xl font-bold text-orange-500">
+                                <span x-text="product.max_power"></span><span class="text-lg">W</span>
+                            </p>
+                            <div class="text-right">
+                                <p x-show="!product.good_price" class="text-sm font-semibold text-gray-900">
+                                    ¥<span x-text="product.price"></span>
+                                </p>
+                                <p x-show="product.good_price">
+                                    <span class="text-sm font-bold text-green-500">¥<span x-text="product.good_price"></span></span>
+                                    <span class="text-xs text-gray-300 line-through ml-1">¥<span x-text="product.price"></span></span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 协议标签 -->
+                        <div class="flex flex-wrap gap-1">
+                            <template x-for="proto in product.protocols.slice(0, 4)" :key="proto">
+                                <span
+                                    :class="protocolColor(proto)"
+                                    class="px-2 py-0.5 rounded text-[10px] font-medium"
+                                    x-text="proto"
+                                ></span>
+                            </template>
+                            <span
+                                x-show="product.protocols.length > 4"
+                                class="px-2 py-0.5 rounded text-[10px] text-gray-400"
+                            >+<span x-text="product.protocols.length - 4"></span></span>
+                        </div>
+
+                        <!-- 辅助信息行 -->
+                        <div class="text-[11px] text-gray-400 space-y-0.5 pt-1 border-t border-gray-100">
+                            <p x-show="product.ports_desc || product.port_count">
+                                <span x-show="product.ports_desc" x-text="product.ports_desc"></span>
+                                <span x-show="product.port_count" class="ml-1">
+                                    (<span x-text="product.port_count"></span>口)
+                                </span>
+                                <span x-show="product.has_usb_a" class="ml-1 text-blue-400">USB-A</span>
+                            </p>
+                            <p x-show="product.weight || product.volume" class="flex gap-3">
+                                <span x-show="product.weight">
+                                    <span x-text="product.weight"></span>g
+                                </span>
+                                <span x-show="product.volume" x-text="product.volume + 'cm³'"></span>
+                            </p>
+                            <p x-show="product.variants && product.variants.length" class="flex gap-1.5">
+                                <template x-for="v in product.variants.slice(0, 3)" :key="v.color">
+                                    <span x-text="v.color"></span>
+                                </template>
+                            </p>
+                        </div>
+                    </div>
+                </a>
+            </template>
+        </div>
+
+        <!-- 空状态 -->
+        <div
+            x-show="filteredProducts.length === 0"
+            class="text-center py-20"
+        >
+            <p class="text-gray-400 text-lg">没有找到匹配的设备</p>
+            <p class="text-gray-300 text-sm mt-1">试试调整筛选条件</p>
+        </div>
+
+    </div>
+
+    <!-- Alpine.js 数据与逻辑 -->
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('chargeFinder', () => ({
+                products: {{ products_json|safe }},
+                allProtocolNames: {{ all_protocols_json|safe }},
+                searchQuery: '',
+                filters: {
+                    category: '',
+                    power: '',
+                    protocols: [],
+                },
+
+                // 搜索解析结果
+                get parsedSearch() {
+                    const q = this.searchQuery.trim();
+                    if (!q) return { text: '', power: null, protocols: [], hasUsbA: false, portCount: null, portDesc: null };
+                    const result = { text: '', power: null, protocols: [], hasUsbA: false, portCount: null, portDesc: null };
+                    const tokens = q.split(/\s+/);
+                    const unrecognized = [];
+
+                    for (const token of tokens) {
+                        // 功率：65W / 65w / 65瓦
+                        const powerMatch = token.match(/^(\d+)\s*[Ww瓦]$/);
+                        if (powerMatch) { result.power = parseInt(powerMatch[1]); continue; }
+
+                        // USB-A：USB-A / A口 / usb-a
+                        if (/^(USB-A|A口|usb-a|USB_A)$/i.test(token)) { result.hasUsbA = true; continue; }
+
+                        // 接口描述：2C1A / 1C 等
+                        if (/^\d+[C]\d*[A]?$/i.test(token)) { result.portDesc = token.toUpperCase(); continue; }
+
+                        // 接口数量：3口 / 2口
+                        const countMatch = token.match(/^(\d+)口$/);
+                        if (countMatch) { result.portCount = parseInt(countMatch[1]); continue; }
+
+                        // 协议匹配（大小写不敏感模糊匹配）
+                        const matchedProto = this.allProtocolNames.find(p =>
+                            p.toUpperCase().includes(token.toUpperCase()) ||
+                            token.toUpperCase().includes(p.toUpperCase())
+                        );
+                        if (matchedProto) { result.protocols.push(matchedProto); continue; }
+
+                        unrecognized.push(token);
+                    }
+                    result.text = unrecognized.join(' ');
+                    return result;
+                },
+
+                // 显示用的识别标签
+                get searchTags() {
+                    const tags = [];
+                    const p = this.parsedSearch;
+                    if (p.text) tags.push({ label: '搜索: ' + p.text, key: 'text' });
+                    if (p.power) tags.push({ label: '功率≈' + p.power + 'W', key: 'power' });
+                    p.protocols.forEach(pr => tags.push({ label: '协议: ' + pr, key: 'proto:' + pr }));
+                    if (p.hasUsbA) tags.push({ label: 'USB-A', key: 'usba' });
+                    if (p.portDesc) tags.push({ label: '接口: ' + p.portDesc, key: 'portDesc' });
+                    if (p.portCount) tags.push({ label: p.portCount + '口', key: 'portCount' });
+                    return tags;
+                },
+
+                // 筛选逻辑：搜索 AND category AND power AND protocols
+                get filteredProducts() {
+                    const ps = this.parsedSearch;
+                    return this.products.filter(p => {
+                        // 搜索：文本模糊匹配品牌/型号
+                        if (ps.text) {
+                            const txt = ps.text.toLowerCase();
+                            if (!p.brand.toLowerCase().includes(txt) &&
+                                !p.name.toLowerCase().includes(txt) &&
+                                !p.ports_desc.toLowerCase().includes(txt)) {
+                                return false;
+                            }
+                        }
+                        // 搜索：功率匹配（按功率挡位判断）
+                        if (ps.power) {
+                            if (p.max_power < ps.power) return false;
+                        }
+                        // 搜索：协议
+                        if (ps.protocols.length > 0) {
+                            const hasAll = ps.protocols.every(pr => p.protocols.includes(pr));
+                            if (!hasAll) return false;
+                        }
+                        // 搜索：USB-A
+                        if (ps.hasUsbA && !p.has_usb_a) return false;
+                        // 搜索：接口描述
+                        if (ps.portDesc && p.ports_desc.toUpperCase() !== ps.portDesc) return false;
+                        // 搜索：接口数量
+                        if (ps.portCount && p.port_count !== ps.portCount) return false;
+
+                        // 手动筛选器
+                        if (this.filters.category && p.category !== this.filters.category) return false;
+                        if (this.filters.power) {
+                            const [min, max] = this.filters.power.split('-').map(Number);
+                            if (max === 0) { if (p.max_power < min) return false; }
+                            else { if (p.max_power < min || p.max_power > max) return false; }
+                        }
+                        if (this.filters.protocols.length > 0) {
+                            if (!this.filters.protocols.some(pr => p.protocols.includes(pr))) return false;
+                        }
+                        return true;
+                    });
+                },
+
+                toggleProtocol(proto, checked) {
+                    if (checked) {
+                        this.filters.protocols.push(proto);
+                    } else {
+                        const idx = this.filters.protocols.indexOf(proto);
+                        if (idx > -1) this.filters.protocols.splice(idx, 1);
+                    }
+                },
+
+                removeSearchTag(tag) {
+                    if (tag.key === 'text') { this.searchQuery = this.searchQuery.replace(this.parsedSearch.text, '').replace(/\s+/g, ' ').trim(); return; }
+                    if (tag.key === 'power') { this.searchQuery = this.searchQuery.replace(/\d+\s*[Ww瓦]/, '').replace(/\s+/g, ' ').trim(); return; }
+                    if (tag.key === 'usba') { this.searchQuery = this.searchQuery.replace(/USB-A|A口|usb-a/gi, '').replace(/\s+/g, ' ').trim(); return; }
+                    if (tag.key === 'portDesc') { this.searchQuery = this.searchQuery.replace(/\d+C\d*A?/gi, '').replace(/\s+/g, ' ').trim(); return; }
+                    if (tag.key === 'portCount') { this.searchQuery = this.searchQuery.replace(/\d+口/, '').replace(/\s+/g, ' ').trim(); return; }
+                    if (tag.key.startsWith('proto:')) {
+                        const pname = tag.key.replace('proto:', '');
+                        this.searchQuery = this.searchQuery.replace(new RegExp(pname, 'i'), '').replace(/\s+/g, ' ').trim();
+                    }
+                },
+
+                // 协议到颜色的映射
+                protocolColor(proto) {
+                    const p = proto.toUpperCase();
+                    if (p.startsWith('PD')) return 'bg-blue-100 text-blue-700';
+                    if (p.startsWith('PPS')) return 'bg-green-100 text-green-700';
+                    if (p.startsWith('UFCS')) return 'bg-orange-100 text-orange-700';
+                    if (p.startsWith('QC')) return 'bg-purple-100 text-purple-700';
+                    if (p.includes('VOOC') || p.includes('SUPERVOOC')) return 'bg-red-100 text-red-700';
+                    if (p.includes('SCP') || p.includes('FCP')) return 'bg-cyan-100 text-cyan-700';
+                    if (p.includes('MI') || p.includes('TURBO')) return 'bg-yellow-100 text-yellow-700';
+                    return 'bg-gray-100 text-gray-600';
+                },
+            }));
+        });
+    </script>
+</body>
+</html>

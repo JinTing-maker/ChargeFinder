@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.brand }} {{ product.name }} - ChargeFinder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-3xl mx-auto px-4 py-8">
+
+        <!-- 返回 -->
+        <a href="/" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-6 transition">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            返回导航页
+        </a>
+
+        <!-- 产品大图 -->
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden mb-6">
+            {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.brand }} {{ product.name }}" class="w-full max-h-96 object-contain bg-gray-50">
+            {% else %}
+            <div class="w-full h-64 flex items-center justify-center bg-gray-100 text-gray-300">
+                <svg class="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 基本信息 -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 mb-4">
+            <span class="text-xs text-gray-400">{{ product.get_category_display }}</span>
+            <h1 class="text-2xl font-bold text-gray-900 mt-1">
+                {{ product.brand }} {{ product.name }}
+            </h1>
+
+            <!-- 功率 -->
+            <div class="flex items-baseline gap-3 mt-4">
+                <span class="text-4xl font-bold text-orange-500">{{ product.max_power }}<span class="text-xl">W</span></span>
+                <span class="text-sm text-gray-400">总功率</span>
+            </div>
+
+            <!-- 价格区 -->
+            <div class="flex items-baseline gap-3 mt-3">
+                {% if product.good_price %}
+                <span class="text-2xl font-bold text-green-500">¥{{ product.good_price }}</span>
+                <span class="text-lg text-gray-300 line-through">¥{{ product.price }}</span>
+                <span class="text-xs text-green-500 bg-green-50 px-2 py-0.5 rounded">好价</span>
+                {% else %}
+                <span class="text-2xl font-bold text-gray-900">¥{{ product.price }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 详细参数 -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 mb-4 space-y-4">
+            <h2 class="text-sm font-semibold text-gray-900 border-b pb-2">详细参数</h2>
+
+            <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span class="text-gray-400">总功率</span>
+                    <p class="text-gray-900 font-medium">{{ product.max_power }}W</p>
+                </div>
+                <div>
+                    <span class="text-gray-400">单口最高</span>
+                    <p class="text-gray-900 font-medium">{{ product.max_single_power }}W</p>
+                </div>
+                <div>
+                    <span class="text-gray-400">接口描述</span>
+                    <p class="text-gray-900 font-medium">{{ product.ports_desc }}</p>
+                </div>
+                <div>
+                    <span class="text-gray-400">接口数量</span>
+                    <p class="text-gray-900 font-medium">{{ product.port_count }}口{% if product.has_usb_a %} <span class="text-blue-500">含 USB-A</span>{% endif %}</p>
+                </div>
+                {% if product.weight %}
+                <div>
+                    <span class="text-gray-400">重量</span>
+                    <p class="text-gray-900 font-medium">{{ product.weight }}g</p>
+                </div>
+                {% endif %}
+                {% if product.volume %}
+                <div>
+                    <span class="text-gray-400">体积</span>
+                    <p class="text-gray-900 font-medium">{{ product.volume }}cm³</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 协议 -->
+        <div class="bg-white rounded-2xl shadow-sm p-6 mb-4">
+            <h2 class="text-sm font-semibold text-gray-900 border-b pb-2 mb-3">支持协议</h2>
+            <div class="flex flex-wrap gap-2">
+                {% for proto in protocols %}
+                <span class="px-3 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-700">{{ proto }}</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 颜色变体 -->
+        {% if product.variants %}
+        <div class="bg-white rounded-2xl shadow-sm p-6 mb-4">
+            <h2 class="text-sm font-semibold text-gray-900 border-b pb-2 mb-3">颜色选项</h2>
+            <div class="flex gap-2">
+                {% for v in product.variants %}
+                <span class="px-3 py-1 rounded-lg text-xs bg-gray-100 text-gray-600">{{ v.color }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
